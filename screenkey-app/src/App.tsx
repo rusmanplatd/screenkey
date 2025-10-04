@@ -199,14 +199,6 @@ function App() {
           ScreenKey
         </div>
         <div className="header-buttons">
-          <button
-            onClick={() => setShowSettings(!showSettings)}
-            onMouseDown={(e) => e.stopPropagation()}
-            className="toggle-btn"
-            title="Settings"
-          >
-            ⚙
-          </button>
           {keys.length > 0 && (
             <button
               onClick={clearHistory}
@@ -216,6 +208,14 @@ function App() {
               Clear
             </button>
           )}
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="toggle-btn"
+            title="Settings"
+          >
+            ⚙
+          </button>
           <button
             onClick={handleMinimize}
             onMouseDown={(e) => e.stopPropagation()}

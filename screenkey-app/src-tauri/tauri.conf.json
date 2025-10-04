@@ -18,7 +18,13 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "publisher": "ScreenKey",
+    "category": "Utility",
+    "shortDescription": "Display keyboard inputs on screen for tutorials and screencasts",
+    "longDescription": "A modern, cross-platform screencast tool to display keyboard inputs on screen. Perfect for tutorials, demonstrations, and vim command visualization. Features include global keyboard capture, multiple layout modes, customizable themes, and always-on-top overlay.",
+    "homepage": "https://github.com/rusmanplatd/screenkey",
+    "license": "MIT"
   },
   "app": {
     "windows": [
