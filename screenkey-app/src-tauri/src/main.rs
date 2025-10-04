@@ -3,6 +3,7 @@
     windows_subsystem = "windows"
 )]
 
+#[cfg(target_os = "linux")]
 use evdev::{Device, InputEventKind, Key};
 use serde::Serialize;
 use std::sync::Mutex;
@@ -18,6 +19,7 @@ struct AppState {
     modifiers: Mutex<Vec<String>>,
 }
 
+#[cfg(target_os = "linux")]
 fn key_to_string(key: Key) -> Option<String> {
     match key {
         Key::KEY_A => Some("A".to_string()),
@@ -101,6 +103,7 @@ fn key_to_string(key: Key) -> Option<String> {
     }
 }
 
+#[cfg(target_os = "linux")]
 fn is_modifier(key: Key) -> bool {
     matches!(
         key,
@@ -115,6 +118,7 @@ fn is_modifier(key: Key) -> bool {
     )
 }
 
+#[cfg(target_os = "linux")]
 fn find_keyboard_devices() -> Vec<Device> {
     let mut keyboards = Vec::new();
 
@@ -157,9 +161,11 @@ fn main() {
                 let _ = window.set_focus();
             }
 
-            std::thread::spawn(move || {
-                println!("Starting keyboard listener...");
-                let mut devices = find_keyboard_devices();
+            #[cfg(target_os = "linux")]
+            {
+                std::thread::spawn(move || {
+                    println!("Starting keyboard listener...");
+                    let mut devices = find_keyboard_devices();
 
                 if devices.is_empty() {
                     eprintln!("No keyboard devices found! Make sure to run with sudo.");
@@ -227,7 +233,14 @@ fn main() {
                     let sleep_duration = if events_found { 1 } else { 10 };
                     std::thread::sleep(std::time::Duration::from_millis(sleep_duration));
                 }
-            });
+                });
+            }
+
+            #[cfg(not(target_os = "linux"))]
+            {
+                eprintln!("Warning: Keyboard capture is only supported on Linux.");
+                eprintln!("The app will run but won't display keyboard events on this platform.");
+            }
 
             Ok(())
         })
