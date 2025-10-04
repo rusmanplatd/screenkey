@@ -53,6 +53,10 @@ jobs:
         working-directory: screenkey-app
         run: npx tsc --noEmit
 
+      - name: Build frontend
+        working-directory: screenkey-app
+        run: npm run build
+
       - name: Rust format check
         working-directory: screenkey-app/src-tauri
         run: cargo fmt --all -- --check
@@ -60,10 +64,6 @@ jobs:
       - name: Rust clippy
         working-directory: screenkey-app/src-tauri
         run: cargo clippy --all-targets --all-features -- -D warnings
-
-      - name: Build frontend
-        working-directory: screenkey-app
-        run: npm run build
 
       - name: Rust check
         working-directory: screenkey-app/src-tauri
