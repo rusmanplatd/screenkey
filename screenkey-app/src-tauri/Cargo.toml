@@ -1,6 +1,6 @@
 [package]
 name = "screenkey-app"
-version = "0.0.8"
+version = "0.0.9"
 description = "A screencast tool to display keyboard inputs on screen"
 authors = ["Rusman Wahab"]
 license = "MIT"
