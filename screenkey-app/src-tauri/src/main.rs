@@ -270,11 +270,9 @@ fn main() {
                 // Spawn a thread to periodically re-assert always-on-top
                 // This ensures the window stays on top even if other apps try to override
                 let window_clone = window.clone();
-                std::thread::spawn(move || {
-                    loop {
-                        std::thread::sleep(std::time::Duration::from_secs(2));
-                        let _ = window_clone.set_always_on_top(true);
-                    }
+                std::thread::spawn(move || loop {
+                    std::thread::sleep(std::time::Duration::from_secs(2));
+                    let _ = window_clone.set_always_on_top(true);
                 });
             }
 

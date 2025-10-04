@@ -92,6 +92,7 @@ function App() {
   const [layoutDirection, setLayoutDirection] = useState<LayoutDirection>('wrapped')
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   const [showSettings, setShowSettings] = useState(false)
+  const appWindow = getCurrentWindow()
 
   // Load settings from localStorage
   useEffect(() => {
@@ -153,20 +154,35 @@ function App() {
   }
 
   const handleDragStart = async () => {
-    const appWindow = getCurrentWindow()
-    await appWindow.startDragging()
+    try {
+      await appWindow.startDragging()
+    } catch (error) {
+      console.error('Failed to start dragging:', error)
+    }
   }
 
   const handleMinimize = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    const appWindow = getCurrentWindow()
-    await appWindow.minimize()
+    e.preventDefault()
+    try {
+      console.log('Attempting to minimize window...')
+      await appWindow.minimize()
+      console.log('Window minimized successfully')
+    } catch (error) {
+      console.error('Failed to minimize window:', error)
+    }
   }
 
   const handleClose = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    const appWindow = getCurrentWindow()
-    await appWindow.close()
+    e.preventDefault()
+    try {
+      console.log('Attempting to close window...')
+      await appWindow.close()
+      console.log('Window closed successfully')
+    } catch (error) {
+      console.error('Failed to close window:', error)
+    }
   }
 
   const updateSetting = <K extends keyof Settings>(key: K, value: Settings[K]) => {
@@ -217,6 +233,7 @@ function App() {
             ⚙
           </button>
           <button
+            type="button"
             onClick={handleMinimize}
             onMouseDown={(e) => e.stopPropagation()}
             className="window-btn minimize-btn"
@@ -225,6 +242,7 @@ function App() {
             −
           </button>
           <button
+            type="button"
             onClick={handleClose}
             onMouseDown={(e) => e.stopPropagation()}
             className="window-btn close-btn"
