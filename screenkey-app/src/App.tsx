@@ -85,9 +85,11 @@ const DEFAULT_SETTINGS: Settings = {
   theme: 'default'
 }
 
+type LayoutDirection = 'vertical' | 'horizontal' | 'wrapped'
+
 function App() {
   const [keys, setKeys] = useState<KeyEvent[]>([])
-  const [isHorizontal, setIsHorizontal] = useState(false)
+  const [layoutDirection, setLayoutDirection] = useState<LayoutDirection>('wrapped')
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   const [showSettings, setShowSettings] = useState(false)
 
@@ -148,10 +150,6 @@ function App() {
 
   const clearHistory = () => {
     setKeys([])
-  }
-
-  const toggleDirection = () => {
-    setIsHorizontal(!isHorizontal)
   }
 
   const handleDragStart = async () => {
@@ -245,16 +243,22 @@ function App() {
             <label>Layout Direction</label>
             <div className="direction-toggle">
               <button
-                className={`direction-btn ${!isHorizontal ? 'active' : ''}`}
-                onClick={() => setIsHorizontal(false)}
+                className={`direction-btn ${layoutDirection === 'vertical' ? 'active' : ''}`}
+                onClick={() => setLayoutDirection('vertical')}
               >
                 ↕ Vertical
               </button>
               <button
-                className={`direction-btn ${isHorizontal ? 'active' : ''}`}
-                onClick={() => setIsHorizontal(true)}
+                className={`direction-btn ${layoutDirection === 'horizontal' ? 'active' : ''}`}
+                onClick={() => setLayoutDirection('horizontal')}
               >
                 ↔ Horizontal
+              </button>
+              <button
+                className={`direction-btn ${layoutDirection === 'wrapped' ? 'active' : ''}`}
+                onClick={() => setLayoutDirection('wrapped')}
+              >
+                ⤵ Wrapped
               </button>
             </div>
           </div>
@@ -367,7 +371,7 @@ function App() {
 
       <KeyDisplay
         keys={keys}
-        isHorizontal={isHorizontal}
+        layoutDirection={layoutDirection}
         fontSize={settings.fontSize}
         theme={currentTheme}
       />

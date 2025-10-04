@@ -251,20 +251,21 @@
 }
 
 .direction-toggle {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
 
 .direction-btn {
-  flex: 1;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
-  padding: 8px 12px;
+  padding: 8px 10px;
   border-radius: 5px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .direction-btn:hover {

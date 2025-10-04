@@ -24,6 +24,17 @@
   align-items: center;
 }
 
+.key-display-container.wrapped {
+  flex-direction: row;
+  flex-wrap: wrap;
+  max-width: 100%;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  align-items: flex-start;
+  align-content: flex-start;
+}
+
 .key-display-container::-webkit-scrollbar {
   width: 8px;
   height: 8px;

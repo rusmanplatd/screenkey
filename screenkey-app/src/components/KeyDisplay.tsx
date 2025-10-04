@@ -15,25 +15,38 @@ interface Theme {
   itemBackground: string
 }
 
+type LayoutDirection = 'vertical' | 'horizontal' | 'wrapped'
+
 interface KeyDisplayProps {
   keys: KeyEvent[]
-  isHorizontal?: boolean
+  layoutDirection?: LayoutDirection
   fontSize?: number
   theme: Theme
 }
 
-function KeyDisplay({ keys, isHorizontal = false, fontSize = 20, theme }: KeyDisplayProps) {
+function KeyDisplay({ keys, layoutDirection = 'vertical', fontSize = 20, theme }: KeyDisplayProps) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (containerRef.current) {
-      if (isHorizontal) {
-        containerRef.current.scrollLeft = containerRef.current.scrollWidth
-      } else {
-        containerRef.current.scrollTop = containerRef.current.scrollHeight
+    if (!containerRef.current) return
+
+    const container = containerRef.current
+    const threshold = 50 // pixels from bottom to consider "at bottom"
+
+    if (layoutDirection === 'horizontal') {
+      // For horizontal, check if near the right edge
+      const isAtEnd = container.scrollWidth - container.scrollLeft - container.clientWidth < threshold
+      if (isAtEnd) {
+        container.scrollLeft = container.scrollWidth
+      }
+    } else if (layoutDirection === 'vertical' || layoutDirection === 'wrapped') {
+      // For vertical/wrapped, check if near the bottom
+      const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold
+      if (isAtBottom) {
+        container.scrollTop = container.scrollHeight
       }
     }
-  }, [keys, isHorizontal])
+  }, [keys, layoutDirection])
 
   if (keys.length === 0) {
     return null
@@ -41,7 +54,7 @@ function KeyDisplay({ keys, isHorizontal = false, fontSize = 20, theme }: KeyDis
 
   return (
     <div
-      className={`key-display-container ${isHorizontal ? 'horizontal' : 'vertical'}`}
+      className={`key-display-container ${layoutDirection}`}
       ref={containerRef}
     >
       {keys.map((keyEvent, index) => (
