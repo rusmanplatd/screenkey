@@ -20,7 +20,7 @@ function App() {
       const unlistenFn = await listen<KeyEvent>('key-press', (event) => {
         console.log('Received key event:', event.payload)
         if (isSubscribed) {
-          setKeys((prev) => [...prev.slice(-4), event.payload])
+          setKeys((prev) => [...prev, event.payload])
         }
       })
       unlisten = unlistenFn
@@ -37,10 +37,21 @@ function App() {
     }
   }, [])
 
+  const clearHistory = () => {
+    setKeys([])
+  }
+
   return (
     <div className="app">
-      <div style={{ color: 'white', marginBottom: '20px' }}>
-        ScreenKey Active - Press any key
+      <div className="header">
+        <div style={{ color: 'white', fontSize: '14px' }}>
+          ScreenKey - Vim Tutorial Mode
+        </div>
+        {keys.length > 0 && (
+          <button onClick={clearHistory} className="clear-btn">
+            Clear History
+          </button>
+        )}
       </div>
       <KeyDisplay keys={keys} />
       {keys.length === 0 && (

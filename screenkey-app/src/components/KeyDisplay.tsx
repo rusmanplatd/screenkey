@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import './KeyDisplay.css'
 
 interface KeyEvent {
@@ -10,12 +11,20 @@ interface KeyDisplayProps {
 }
 
 function KeyDisplay({ keys }: KeyDisplayProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight
+    }
+  }, [keys])
+
   if (keys.length === 0) {
     return null
   }
 
   return (
-    <div className="key-display-container">
+    <div className="key-display-container" ref={containerRef}>
       {keys.map((keyEvent, index) => (
         <div key={index} className="key-item">
           {keyEvent.modifiers.length > 0 && (

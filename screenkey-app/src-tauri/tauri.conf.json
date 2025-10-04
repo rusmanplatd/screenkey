@@ -23,15 +23,17 @@
   "app": {
     "windows": [
       {
-        "title": "ScreenKey",
-        "width": 400,
-        "height": 200,
+        "title": "ScreenKey - Vim Tutorial",
+        "width": 350,
+        "height": 500,
         "transparent": true,
         "decorations": false,
         "alwaysOnTop": true,
         "skipTaskbar": false,
         "visible": true,
-        "center": true
+        "center": false,
+        "x": 50,
+        "y": 50
       }
     ],
     "security": {
