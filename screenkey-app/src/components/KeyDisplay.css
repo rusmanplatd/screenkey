@@ -44,24 +44,14 @@
 }
 
 .key-item {
-  font-size: 20px;
   font-weight: 600;
   color: white;
   text-align: center;
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.1);
   border-radius: 5px;
   animation: fadeIn 0.3s ease-in;
   flex-shrink: 0;
   white-space: nowrap;
-}
-
-.modifiers {
-  color: #fbbf24;
-}
-
-.key {
-  color: #60a5fa;
 }
 
 @keyframes fadeIn {

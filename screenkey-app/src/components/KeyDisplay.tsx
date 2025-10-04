@@ -4,14 +4,25 @@ import './KeyDisplay.css'
 interface KeyEvent {
   key: string
   modifiers: string[]
+  timestamp: number
+}
+
+interface Theme {
+  name: string
+  modifierColor: string
+  keyColor: string
+  backgroundColor: string
+  itemBackground: string
 }
 
 interface KeyDisplayProps {
   keys: KeyEvent[]
   isHorizontal?: boolean
+  fontSize?: number
+  theme: Theme
 }
 
-function KeyDisplay({ keys, isHorizontal = false }: KeyDisplayProps) {
+function KeyDisplay({ keys, isHorizontal = false, fontSize = 20, theme }: KeyDisplayProps) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -34,13 +45,22 @@ function KeyDisplay({ keys, isHorizontal = false }: KeyDisplayProps) {
       ref={containerRef}
     >
       {keys.map((keyEvent, index) => (
-        <div key={index} className="key-item">
+        <div
+          key={index}
+          className="key-item"
+          style={{
+            fontSize: `${fontSize}px`,
+            background: theme.itemBackground
+          }}
+        >
           {keyEvent.modifiers.length > 0 && (
-            <span className="modifiers">
+            <span className="modifiers" style={{ color: theme.modifierColor }}>
               {keyEvent.modifiers.join(' + ')} +{' '}
             </span>
           )}
-          <span className="key">{keyEvent.key}</span>
+          <span className="key" style={{ color: theme.keyColor }}>
+            {keyEvent.key}
+          </span>
         </div>
       ))}
     </div>

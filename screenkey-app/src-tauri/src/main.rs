@@ -162,10 +162,13 @@ fn main() {
                 println!("Monitoring {} keyboard device(s)", devices.len());
 
                 loop {
+                    let mut events_found = false;
+
                     for device in &mut devices {
                         while let Ok(events) = device.fetch_events() {
                             for event in events {
                                 if let InputEventKind::Key(key) = event.kind() {
+                                    events_found = true;
                                     let value = event.value();
 
                                     // value: 0 = release, 1 = press, 2 = repeat
@@ -206,7 +209,9 @@ fn main() {
                         }
                     }
 
-                    std::thread::sleep(std::time::Duration::from_millis(10));
+                    // Sleep longer when no events to reduce CPU usage
+                    let sleep_duration = if events_found { 1 } else { 10 };
+                    std::thread::sleep(std::time::Duration::from_millis(sleep_duration));
                 }
             });
 
