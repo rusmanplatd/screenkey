@@ -167,72 +167,73 @@ fn main() {
                     println!("Starting keyboard listener...");
                     let mut devices = find_keyboard_devices();
 
-                if devices.is_empty() {
-                    eprintln!("No keyboard devices found! Make sure to run with sudo.");
-                    return;
-                }
+                    if devices.is_empty() {
+                        eprintln!("No keyboard devices found! Make sure to run with sudo.");
+                        return;
+                    }
 
-                println!("Monitoring {} keyboard device(s)", devices.len());
+                    println!("Monitoring {} keyboard device(s)", devices.len());
 
-                loop {
-                    let mut events_found = false;
+                    loop {
+                        let mut events_found = false;
 
-                    for device in &mut devices {
-                        while let Ok(events) = device.fetch_events() {
-                            for event in events {
-                                if let InputEventKind::Key(key) = event.kind() {
-                                    events_found = true;
-                                    let value = event.value();
+                        for device in &mut devices {
+                            while let Ok(events) = device.fetch_events() {
+                                for event in events {
+                                    if let InputEventKind::Key(key) = event.kind() {
+                                        events_found = true;
+                                        let value = event.value();
 
-                                    // value: 0 = release, 1 = press, 2 = repeat
-                                    if value == 1 {
-                                        // Key press
-                                        if let Some(key_str) = key_to_string(key) {
-                                            let state = app_handle.state::<AppState>();
-
-                                            if is_modifier(key) {
-                                                let mut mods = state.modifiers.lock().unwrap();
-                                                if !mods.contains(&key_str) {
-                                                    mods.push(key_str.clone());
-                                                }
-                                            } else {
-                                                let mods = state.modifiers.lock().unwrap().clone();
-
-                                                let key_event = KeyEvent {
-                                                    key: key_str.clone(),
-                                                    modifiers: mods.clone(),
-                                                };
-
-                                                println!(
-                                                    "Key pressed: {} with modifiers: {:?}",
-                                                    key_str, mods
-                                                );
-                                                if let Err(e) =
-                                                    app_handle.emit("key-press", key_event)
-                                                {
-                                                    eprintln!("Failed to emit event: {:?}", e);
-                                                }
-                                            }
-                                        }
-                                    } else if value == 0 {
-                                        // Key release
-                                        if is_modifier(key) {
+                                        // value: 0 = release, 1 = press, 2 = repeat
+                                        if value == 1 {
+                                            // Key press
                                             if let Some(key_str) = key_to_string(key) {
                                                 let state = app_handle.state::<AppState>();
-                                                let mut mods = state.modifiers.lock().unwrap();
-                                                mods.retain(|m| m != &key_str);
+
+                                                if is_modifier(key) {
+                                                    let mut mods = state.modifiers.lock().unwrap();
+                                                    if !mods.contains(&key_str) {
+                                                        mods.push(key_str.clone());
+                                                    }
+                                                } else {
+                                                    let mods =
+                                                        state.modifiers.lock().unwrap().clone();
+
+                                                    let key_event = KeyEvent {
+                                                        key: key_str.clone(),
+                                                        modifiers: mods.clone(),
+                                                    };
+
+                                                    println!(
+                                                        "Key pressed: {} with modifiers: {:?}",
+                                                        key_str, mods
+                                                    );
+                                                    if let Err(e) =
+                                                        app_handle.emit("key-press", key_event)
+                                                    {
+                                                        eprintln!("Failed to emit event: {:?}", e);
+                                                    }
+                                                }
+                                            }
+                                        } else if value == 0 {
+                                            // Key release
+                                            if is_modifier(key) {
+                                                if let Some(key_str) = key_to_string(key) {
+                                                    let state = app_handle.state::<AppState>();
+                                                    let mut mods = state.modifiers.lock().unwrap();
+                                                    mods.retain(|m| m != &key_str);
+                                                }
                                             }
                                         }
                                     }
                                 }
                             }
                         }
-                    }
 
-                    // Sleep longer when no events to reduce CPU usage
-                    let sleep_duration = if events_found { 1 } else { 10 };
-                    std::thread::sleep(std::time::Duration::from_millis(sleep_duration));
-                }
+                        // Sleep longer when no events to reduce CPU usage
+                        let sleep_duration = if events_found { 1 } else { 10 };
+                        std::thread::sleep(std::time::Duration::from_millis(sleep_duration));
+                    }
                 });
             }
 
