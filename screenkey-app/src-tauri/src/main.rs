@@ -353,43 +353,41 @@ fn main() {
                 std::thread::spawn(move || {
                     println!("Starting keyboard listener for macOS/Windows...");
 
-                    if let Err(e) = listen(move |event: RdevEvent| {
-                        match event.event_type {
-                            EventType::KeyPress(key) => {
+                    if let Err(e) = listen(move |event: RdevEvent| match event.event_type {
+                        EventType::KeyPress(key) => {
+                            if let Some(key_str) = rdev_key_to_string(key) {
+                                let state = app_handle_clone.state::<AppState>();
+
+                                if is_rdev_modifier(&key) {
+                                    let mut mods = state.modifiers.lock().unwrap();
+                                    if !mods.contains(&key_str) {
+                                        mods.push(key_str.clone());
+                                    }
+                                } else {
+                                    let mods = state.modifiers.lock().unwrap().clone();
+
+                                    let key_event = KeyEvent {
+                                        key: key_str.clone(),
+                                        modifiers: mods.clone(),
+                                    };
+
+                                    println!("Key pressed: {} with modifiers: {:?}", key_str, mods);
+                                    if let Err(e) = app_handle_clone.emit("key-press", key_event) {
+                                        eprintln!("Failed to emit event: {:?}", e);
+                                    }
+                                }
+                            }
+                        }
+                        EventType::KeyRelease(key) => {
+                            if is_rdev_modifier(&key) {
                                 if let Some(key_str) = rdev_key_to_string(key) {
                                     let state = app_handle_clone.state::<AppState>();
-
-                                    if is_rdev_modifier(&key) {
-                                        let mut mods = state.modifiers.lock().unwrap();
-                                        if !mods.contains(&key_str) {
-                                            mods.push(key_str.clone());
-                                        }
-                                    } else {
-                                        let mods = state.modifiers.lock().unwrap().clone();
-
-                                        let key_event = KeyEvent {
-                                            key: key_str.clone(),
-                                            modifiers: mods.clone(),
-                                        };
-
-                                        println!("Key pressed: {} with modifiers: {:?}", key_str, mods);
-                                        if let Err(e) = app_handle_clone.emit("key-press", key_event) {
-                                            eprintln!("Failed to emit event: {:?}", e);
-                                        }
-                                    }
+                                    let mut mods = state.modifiers.lock().unwrap();
+                                    mods.retain(|m| m != &key_str);
                                 }
                             }
-                            EventType::KeyRelease(key) => {
-                                if is_rdev_modifier(&key) {
-                                    if let Some(key_str) = rdev_key_to_string(key) {
-                                        let state = app_handle_clone.state::<AppState>();
-                                        let mut mods = state.modifiers.lock().unwrap();
-                                        mods.retain(|m| m != &key_str);
-                                    }
-                                }
-                            }
-                            _ => {}
                         }
+                        _ => {}
                     }) {
                         eprintln!("Error listening to keyboard events: {:?}", e);
                     }
