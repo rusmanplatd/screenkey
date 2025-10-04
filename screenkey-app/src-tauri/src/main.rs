@@ -5,6 +5,10 @@
 
 #[cfg(target_os = "linux")]
 use evdev::{Device, InputEventKind, Key};
+
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+use rdev::{listen, Event as RdevEvent, EventType, Key as RdevKey};
+
 use serde::Serialize;
 use std::sync::Mutex;
 use tauri::{Emitter, Manager};
@@ -144,6 +148,110 @@ fn find_keyboard_devices() -> Vec<Device> {
     keyboards
 }
 
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+fn rdev_key_to_string(key: RdevKey) -> Option<String> {
+    match key {
+        RdevKey::KeyA => Some("A".to_string()),
+        RdevKey::KeyB => Some("B".to_string()),
+        RdevKey::KeyC => Some("C".to_string()),
+        RdevKey::KeyD => Some("D".to_string()),
+        RdevKey::KeyE => Some("E".to_string()),
+        RdevKey::KeyF => Some("F".to_string()),
+        RdevKey::KeyG => Some("G".to_string()),
+        RdevKey::KeyH => Some("H".to_string()),
+        RdevKey::KeyI => Some("I".to_string()),
+        RdevKey::KeyJ => Some("J".to_string()),
+        RdevKey::KeyK => Some("K".to_string()),
+        RdevKey::KeyL => Some("L".to_string()),
+        RdevKey::KeyM => Some("M".to_string()),
+        RdevKey::KeyN => Some("N".to_string()),
+        RdevKey::KeyO => Some("O".to_string()),
+        RdevKey::KeyP => Some("P".to_string()),
+        RdevKey::KeyQ => Some("Q".to_string()),
+        RdevKey::KeyR => Some("R".to_string()),
+        RdevKey::KeyS => Some("S".to_string()),
+        RdevKey::KeyT => Some("T".to_string()),
+        RdevKey::KeyU => Some("U".to_string()),
+        RdevKey::KeyV => Some("V".to_string()),
+        RdevKey::KeyW => Some("W".to_string()),
+        RdevKey::KeyX => Some("X".to_string()),
+        RdevKey::KeyY => Some("Y".to_string()),
+        RdevKey::KeyZ => Some("Z".to_string()),
+        RdevKey::Num0 => Some("0".to_string()),
+        RdevKey::Num1 => Some("1".to_string()),
+        RdevKey::Num2 => Some("2".to_string()),
+        RdevKey::Num3 => Some("3".to_string()),
+        RdevKey::Num4 => Some("4".to_string()),
+        RdevKey::Num5 => Some("5".to_string()),
+        RdevKey::Num6 => Some("6".to_string()),
+        RdevKey::Num7 => Some("7".to_string()),
+        RdevKey::Num8 => Some("8".to_string()),
+        RdevKey::Num9 => Some("9".to_string()),
+        RdevKey::Space => Some("Space".to_string()),
+        RdevKey::Return => Some("Enter".to_string()),
+        RdevKey::Backspace => Some("Backspace".to_string()),
+        RdevKey::Tab => Some("Tab".to_string()),
+        RdevKey::Escape => Some("Esc".to_string()),
+        RdevKey::UpArrow => Some("↑".to_string()),
+        RdevKey::DownArrow => Some("↓".to_string()),
+        RdevKey::LeftArrow => Some("←".to_string()),
+        RdevKey::RightArrow => Some("→".to_string()),
+        RdevKey::Delete => Some("Delete".to_string()),
+        RdevKey::Home => Some("Home".to_string()),
+        RdevKey::End => Some("End".to_string()),
+        RdevKey::PageUp => Some("PgUp".to_string()),
+        RdevKey::PageDown => Some("PgDn".to_string()),
+        RdevKey::F1 => Some("F1".to_string()),
+        RdevKey::F2 => Some("F2".to_string()),
+        RdevKey::F3 => Some("F3".to_string()),
+        RdevKey::F4 => Some("F4".to_string()),
+        RdevKey::F5 => Some("F5".to_string()),
+        RdevKey::F6 => Some("F6".to_string()),
+        RdevKey::F7 => Some("F7".to_string()),
+        RdevKey::F8 => Some("F8".to_string()),
+        RdevKey::F9 => Some("F9".to_string()),
+        RdevKey::F10 => Some("F10".to_string()),
+        RdevKey::F11 => Some("F11".to_string()),
+        RdevKey::F12 => Some("F12".to_string()),
+        RdevKey::ShiftLeft | RdevKey::ShiftRight => Some("Shift".to_string()),
+        RdevKey::ControlLeft | RdevKey::ControlRight => Some("Ctrl".to_string()),
+        RdevKey::Alt | RdevKey::AltGr => Some("Alt".to_string()),
+        RdevKey::MetaLeft | RdevKey::MetaRight => {
+            #[cfg(target_os = "macos")]
+            return Some("Cmd".to_string());
+            #[cfg(target_os = "windows")]
+            return Some("Win".to_string());
+        }
+        RdevKey::Minus => Some("-".to_string()),
+        RdevKey::Equal => Some("=".to_string()),
+        RdevKey::LeftBracket => Some("[".to_string()),
+        RdevKey::RightBracket => Some("]".to_string()),
+        RdevKey::SemiColon => Some(";".to_string()),
+        RdevKey::Quote => Some("'".to_string()),
+        RdevKey::BackQuote => Some("`".to_string()),
+        RdevKey::BackSlash => Some("\\".to_string()),
+        RdevKey::Comma => Some(",".to_string()),
+        RdevKey::Dot => Some(".".to_string()),
+        RdevKey::Slash => Some("/".to_string()),
+        _ => None,
+    }
+}
+
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+fn is_rdev_modifier(key: &RdevKey) -> bool {
+    matches!(
+        key,
+        RdevKey::ShiftLeft
+            | RdevKey::ShiftRight
+            | RdevKey::ControlLeft
+            | RdevKey::ControlRight
+            | RdevKey::Alt
+            | RdevKey::AltGr
+            | RdevKey::MetaLeft
+            | RdevKey::MetaRight
+    )
+}
+
 fn main() {
     let state = AppState {
         modifiers: Mutex::new(Vec::new()),
@@ -237,10 +345,55 @@ fn main() {
                 });
             }
 
-            #[cfg(not(target_os = "linux"))]
+            #[cfg(any(target_os = "macos", target_os = "windows"))]
             {
-                eprintln!("Warning: Keyboard capture is only supported on Linux.");
-                eprintln!("The app will run but won't display keyboard events on this platform.");
+                use std::sync::Arc;
+                let app_handle_clone = Arc::new(app_handle.clone());
+
+                std::thread::spawn(move || {
+                    println!("Starting keyboard listener for macOS/Windows...");
+
+                    if let Err(e) = listen(move |event: RdevEvent| {
+                        match event.event_type {
+                            EventType::KeyPress(key) => {
+                                if let Some(key_str) = rdev_key_to_string(key) {
+                                    let state = app_handle_clone.state::<AppState>();
+
+                                    if is_rdev_modifier(&key) {
+                                        let mut mods = state.modifiers.lock().unwrap();
+                                        if !mods.contains(&key_str) {
+                                            mods.push(key_str.clone());
+                                        }
+                                    } else {
+                                        let mods = state.modifiers.lock().unwrap().clone();
+
+                                        let key_event = KeyEvent {
+                                            key: key_str.clone(),
+                                            modifiers: mods.clone(),
+                                        };
+
+                                        println!("Key pressed: {} with modifiers: {:?}", key_str, mods);
+                                        if let Err(e) = app_handle_clone.emit("key-press", key_event) {
+                                            eprintln!("Failed to emit event: {:?}", e);
+                                        }
+                                    }
+                                }
+                            }
+                            EventType::KeyRelease(key) => {
+                                if is_rdev_modifier(&key) {
+                                    if let Some(key_str) = rdev_key_to_string(key) {
+                                        let state = app_handle_clone.state::<AppState>();
+                                        let mut mods = state.modifiers.lock().unwrap();
+                                        mods.retain(|m| m != &key_str);
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
+                    }) {
+                        eprintln!("Error listening to keyboard events: {:?}", e);
+                    }
+                });
             }
 
             Ok(())
