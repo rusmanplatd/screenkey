@@ -7,12 +7,14 @@ This document describes how to create a new release of ScreenKey.
 ### Creating a Release
 
 1. **Update Version Number**
+
    ```bash
    # Update version in screenkey-app/src-tauri/tauri.conf.json
    # Update version in screenkey-app/package.json
    ```
 
 2. **Commit and Tag**
+
    ```bash
    git add .
    git commit -m "Release v1.0.0"
@@ -21,6 +23,7 @@ This document describes how to create a new release of ScreenKey.
    ```
 
 3. **GitHub Actions Builds Automatically**
+
    - The workflow will trigger on the new tag
    - Builds will be created for:
      - **Linux** (AppImage, .deb)
@@ -36,6 +39,7 @@ This document describes how to create a new release of ScreenKey.
 ## Manual Builds
 
 ### Linux
+
 ```bash
 cd screenkey-app
 npm install
@@ -44,6 +48,7 @@ npm run tauri build
 ```
 
 ### macOS
+
 ```bash
 cd screenkey-app
 npm install
@@ -52,6 +57,7 @@ npm run tauri build
 ```
 
 ### Windows
+
 ```bash
 cd screenkey-app
 npm install
@@ -62,6 +68,7 @@ npm run tauri build
 ## Version Numbering
 
 We follow [Semantic Versioning](https://semver.org/):
+
 - **MAJOR**: Incompatible API changes
 - **MINOR**: Add functionality (backwards-compatible)
 - **PATCH**: Bug fixes (backwards-compatible)
