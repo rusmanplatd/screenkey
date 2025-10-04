@@ -11,6 +11,7 @@ interface KeyEvent {
 
 function App() {
   const [keys, setKeys] = useState<KeyEvent[]>([])
+  const [isHorizontal, setIsHorizontal] = useState(false)
 
   useEffect(() => {
     let unlisten: (() => void) | undefined
@@ -42,6 +43,10 @@ function App() {
     setKeys([])
   }
 
+  const toggleDirection = () => {
+    setIsHorizontal(!isHorizontal)
+  }
+
   const handleDragStart = async () => {
     const appWindow = getCurrentWindow()
     await appWindow.startDragging()
@@ -51,15 +56,20 @@ function App() {
     <div className="app">
       <div className="header" onMouseDown={handleDragStart}>
         <div style={{ color: 'white', fontSize: '14px', cursor: 'move' }}>
-          ScreenKey - Vim Tutorial Mode
+          ScreenKey
         </div>
-        {keys.length > 0 && (
-          <button onClick={clearHistory} className="clear-btn">
-            Clear History
+        <div className="header-buttons">
+          <button onClick={toggleDirection} className="toggle-btn" title="Toggle direction">
+            {isHorizontal ? '↕' : '↔'}
           </button>
-        )}
+          {keys.length > 0 && (
+            <button onClick={clearHistory} className="clear-btn">
+              Clear
+            </button>
+          )}
+        </div>
       </div>
-      <KeyDisplay keys={keys} />
+      <KeyDisplay keys={keys} isHorizontal={isHorizontal} />
       {keys.length === 0 && (
         <div style={{ color: '#888', marginTop: '20px' }}>
           Waiting for keyboard input...

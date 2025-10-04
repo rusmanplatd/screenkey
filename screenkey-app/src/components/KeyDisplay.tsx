@@ -8,23 +8,31 @@ interface KeyEvent {
 
 interface KeyDisplayProps {
   keys: KeyEvent[]
+  isHorizontal?: boolean
 }
 
-function KeyDisplay({ keys }: KeyDisplayProps) {
+function KeyDisplay({ keys, isHorizontal = false }: KeyDisplayProps) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight
+      if (isHorizontal) {
+        containerRef.current.scrollLeft = containerRef.current.scrollWidth
+      } else {
+        containerRef.current.scrollTop = containerRef.current.scrollHeight
+      }
     }
-  }, [keys])
+  }, [keys, isHorizontal])
 
   if (keys.length === 0) {
     return null
   }
 
   return (
-    <div className="key-display-container" ref={containerRef}>
+    <div
+      className={`key-display-container ${isHorizontal ? 'horizontal' : 'vertical'}`}
+      ref={containerRef}
+    >
       {keys.map((keyEvent, index) => (
         <div key={index} className="key-item">
           {keyEvent.modifiers.length > 0 && (

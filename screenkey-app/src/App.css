@@ -16,7 +16,14 @@
   flex-shrink: 0;
 }
 
-.clear-btn {
+.header-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.clear-btn,
+.toggle-btn {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.3);
   color: white;
@@ -27,7 +34,13 @@
   transition: all 0.2s;
 }
 
-.clear-btn:hover {
+.toggle-btn {
+  font-size: 16px;
+  padding: 5px 10px;
+}
+
+.clear-btn:hover,
+.toggle-btn:hover {
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.5);
 }

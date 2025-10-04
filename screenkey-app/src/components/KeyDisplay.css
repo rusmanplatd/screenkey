@@ -1,19 +1,32 @@
 .key-display-container {
   display: flex;
-  flex-direction: column;
   gap: 8px;
   padding: 15px 20px;
   background: rgba(0, 0, 0, 0.8);
   border-radius: 10px;
   backdrop-filter: blur(10px);
+  flex: 1;
+}
+
+.key-display-container.vertical {
+  flex-direction: column;
   min-width: 200px;
   max-height: calc(100vh - 100px);
   overflow-y: auto;
-  flex: 1;
+  overflow-x: hidden;
+}
+
+.key-display-container.horizontal {
+  flex-direction: row;
+  max-width: calc(100vw - 30px);
+  overflow-x: auto;
+  overflow-y: hidden;
+  align-items: center;
 }
 
 .key-display-container::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
 
 .key-display-container::-webkit-scrollbar-track {
@@ -40,6 +53,7 @@
   border-radius: 5px;
   animation: fadeIn 0.3s ease-in;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .modifiers {
