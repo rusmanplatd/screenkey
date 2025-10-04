@@ -47,7 +47,10 @@
         "minimizable": true,
         "closable": true,
         "fullscreen": false,
-        "visibleOnAllWorkspaces": true
+        "visibleOnAllWorkspaces": true,
+        "contentProtected": false,
+        "hiddenTitle": true,
+        "acceptFirstMouse": true
       }
     ],
     "security": {

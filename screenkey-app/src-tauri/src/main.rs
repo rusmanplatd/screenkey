@@ -262,11 +262,20 @@ fn main() {
         .setup(|app| {
             let app_handle = app.handle().clone();
 
-            // Ensure window is always on top
+            // Ensure window is always on top with periodic re-assertion
             if let Some(window) = app.get_webview_window("main") {
+                // Set always on top initially
                 let _ = window.set_always_on_top(true);
-                // Don't focus the window initially
-                let _ = window.set_focus();
+
+                // Spawn a thread to periodically re-assert always-on-top
+                // This ensures the window stays on top even if other apps try to override
+                let window_clone = window.clone();
+                std::thread::spawn(move || {
+                    loop {
+                        std::thread::sleep(std::time::Duration::from_secs(2));
+                        let _ = window_clone.set_always_on_top(true);
+                    }
+                });
             }
 
             #[cfg(target_os = "linux")]

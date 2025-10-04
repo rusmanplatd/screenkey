@@ -6,6 +6,8 @@
   padding: 15px;
   background: rgba(0, 0, 0, 0.9);
   overflow: hidden;
+  position: relative;
+  z-index: 2147483647; /* Maximum z-index value */
 }
 
 .header {
