@@ -1,0 +1,23 @@
+[package]
+name = "screenkey-app"
+version = "0.1.0"
+description = "A screencast tool to display keyboard inputs on screen"
+authors = ["you"]
+license = ""
+repository = ""
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2.4", features = [] }
+
+[dependencies]
+tauri = { version = "2.4", features = [] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+evdev = "0.12"
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]
+
+[target.'cfg(target_os = "linux")'.dependencies]
+x11 = { version = "2.21", features = ["xlib"] }
