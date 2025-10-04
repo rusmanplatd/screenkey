@@ -29,6 +29,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "ScreenKey",
         "width": 350,
         "height": 500,
@@ -39,11 +40,19 @@
         "visible": true,
         "center": false,
         "x": 50,
-        "y": 50
+        "y": 50,
+        "focus": false,
+        "resizable": true,
+        "maximizable": false,
+        "minimizable": true,
+        "closable": true,
+        "fullscreen": false,
+        "visibleOnAllWorkspaces": true
       }
     ],
     "security": {
       "csp": null
-    }
+    },
+    "macOSPrivateApi": true
   }
 }

@@ -1,0 +1,42 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#60a5fa;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbbf24;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f59e0b;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded square background -->
+  <rect width="512" height="512" rx="100" fill="url(#grad1)"/>
+
+  <!-- Keyboard base -->
+  <rect x="80" y="220" width="352" height="180" rx="16" fill="white" opacity="0.95"/>
+
+  <!-- Keys row 1 -->
+  <rect x="100" y="240" width="48" height="48" rx="8" fill="url(#grad2)"/>
+  <rect x="160" y="240" width="48" height="48" rx="8" fill="url(#grad2)"/>
+  <rect x="220" y="240" width="48" height="48" rx="8" fill="url(#grad2)"/>
+  <rect x="280" y="240" width="48" height="48" rx="8" fill="url(#grad2)"/>
+  <rect x="340" y="240" width="48" height="48" rx="8" fill="url(#grad2)"/>
+
+  <!-- Keys row 2 -->
+  <rect x="100" y="300" width="48" height="48" rx="8" fill="url(#grad2)"/>
+  <rect x="160" y="300" width="48" height="48" rx="8" fill="url(#grad2)"/>
+  <rect x="220" y="300" width="48" height="48" rx="8" fill="url(#grad2)"/>
+  <rect x="280" y="300" width="48" height="48" rx="8" fill="url(#grad2)"/>
+  <rect x="340" y="300" width="48" height="48" rx="8" fill="url(#grad2)"/>
+
+  <!-- Emphasized key (K for ScreenKey) -->
+  <rect x="220" y="300" width="48" height="48" rx="8" fill="#ef4444"/>
+  <text x="244" y="335" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="white" text-anchor="middle">K</text>
+
+  <!-- Eye icon (showing/display) -->
+  <ellipse cx="256" cy="140" rx="60" ry="35" fill="white" opacity="0.9"/>
+  <ellipse cx="256" cy="140" rx="35" ry="35" fill="url(#grad1)"/>
+  <ellipse cx="256" cy="140" rx="18" ry="18" fill="white"/>
+</svg>

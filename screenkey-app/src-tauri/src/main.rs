@@ -150,6 +150,13 @@ fn main() {
         .setup(|app| {
             let app_handle = app.handle().clone();
 
+            // Ensure window is always on top
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_always_on_top(true);
+                // Don't focus the window initially
+                let _ = window.set_focus();
+            }
+
             std::thread::spawn(move || {
                 println!("Starting keyboard listener...");
                 let mut devices = find_keyboard_devices();
