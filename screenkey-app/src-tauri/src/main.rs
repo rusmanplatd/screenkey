@@ -172,7 +172,8 @@ fn main() {
                                     let value = event.value();
 
                                     // value: 0 = release, 1 = press, 2 = repeat
-                                    if value == 1 {  // Key press
+                                    if value == 1 {
+                                        // Key press
                                         if let Some(key_str) = key_to_string(key) {
                                             let state = app_handle.state::<AppState>();
 
@@ -189,13 +190,19 @@ fn main() {
                                                     modifiers: mods.clone(),
                                                 };
 
-                                                println!("Key pressed: {} with modifiers: {:?}", key_str, mods);
-                                                if let Err(e) = app_handle.emit("key-press", key_event) {
+                                                println!(
+                                                    "Key pressed: {} with modifiers: {:?}",
+                                                    key_str, mods
+                                                );
+                                                if let Err(e) =
+                                                    app_handle.emit("key-press", key_event)
+                                                {
                                                     eprintln!("Failed to emit event: {:?}", e);
                                                 }
                                             }
                                         }
-                                    } else if value == 0 {  // Key release
+                                    } else if value == 0 {
+                                        // Key release
                                         if is_modifier(key) {
                                             if let Some(key_str) = key_to_string(key) {
                                                 let state = app_handle.state::<AppState>();
