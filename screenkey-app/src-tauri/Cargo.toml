@@ -1,10 +1,10 @@
 [package]
 name = "screenkey-app"
-version = "0.1.0"
+version = "0.0.7"
 description = "A screencast tool to display keyboard inputs on screen"
-authors = ["you"]
-license = ""
-repository = ""
+authors = ["Rusman Wahab"]
+license = "MIT"
+repository = "https://github.com/rusmanplatd/screenkey"
 edition = "2021"
 
 [build-dependencies]
