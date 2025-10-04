@@ -159,12 +159,14 @@ function App() {
     await appWindow.startDragging()
   }
 
-  const handleMinimize = async () => {
+  const handleMinimize = async (e: React.MouseEvent) => {
+    e.stopPropagation()
     const appWindow = getCurrentWindow()
     await appWindow.minimize()
   }
 
-  const handleClose = async () => {
+  const handleClose = async (e: React.MouseEvent) => {
+    e.stopPropagation()
     const appWindow = getCurrentWindow()
     await appWindow.close()
   }
@@ -194,23 +196,42 @@ function App() {
 
   return (
     <div className="app" style={{ background: currentTheme.backgroundColor.replace(/[\d.]+\)$/, `${settings.opacity})`) }}>
-      <div className="header">
-        <div style={{ color: 'white', fontSize: '14px', cursor: 'move' }} onMouseDown={handleDragStart}>
+      <div className="header" onMouseDown={handleDragStart}>
+        <div className="drag-handle">
           ScreenKey
         </div>
         <div className="header-buttons">
-          <button onClick={() => setShowSettings(!showSettings)} className="toggle-btn" title="Settings">
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="toggle-btn"
+            title="Settings"
+          >
             ⚙
           </button>
           {keys.length > 0 && (
-            <button onClick={clearHistory} className="clear-btn">
+            <button
+              onClick={clearHistory}
+              onMouseDown={(e) => e.stopPropagation()}
+              className="clear-btn"
+            >
               Clear
             </button>
           )}
-          <button onClick={handleMinimize} className="window-btn minimize-btn" title="Minimize">
+          <button
+            onClick={handleMinimize}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="window-btn minimize-btn"
+            title="Minimize"
+          >
             −
           </button>
-          <button onClick={handleClose} className="window-btn close-btn" title="Close">
+          <button
+            onClick={handleClose}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="window-btn close-btn"
+            title="Close"
+          >
             ×
           </button>
         </div>
