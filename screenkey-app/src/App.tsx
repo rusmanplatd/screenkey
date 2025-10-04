@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listen } from '@tauri-apps/api/event'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import KeyDisplay from './components/KeyDisplay'
 import './App.css'
 
@@ -41,10 +42,15 @@ function App() {
     setKeys([])
   }
 
+  const handleDragStart = async () => {
+    const appWindow = getCurrentWindow()
+    await appWindow.startDragging()
+  }
+
   return (
     <div className="app">
-      <div className="header">
-        <div style={{ color: 'white', fontSize: '14px' }}>
+      <div className="header" onMouseDown={handleDragStart}>
+        <div style={{ color: 'white', fontSize: '14px', cursor: 'move' }}>
           ScreenKey - Vim Tutorial Mode
         </div>
         {keys.length > 0 && (
