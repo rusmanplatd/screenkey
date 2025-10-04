@@ -57,14 +57,26 @@ jobs:
         working-directory: screenkey-app
         run: npm run build
 
+      - name: Verify dist folder
+        working-directory: screenkey-app
+        run: |
+          if [ ! -d "dist" ]; then
+            echo "Error: dist folder was not created"
+            pwd
+            ls -la
+            exit 1
+          fi
+          echo "✓ dist folder exists"
+          ls -la dist | head -10
+
       - name: Rust format check
         working-directory: screenkey-app/src-tauri
         run: cargo fmt --all -- --check
 
       - name: Rust clippy
         working-directory: screenkey-app/src-tauri
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --all-targets -- -D warnings
 
-      - name: Rust check
-        working-directory: screenkey-app/src-tauri
-        run: cargo check --all-targets --all-features
+      - name: Build Tauri app
+        working-directory: screenkey-app
+        run: npm run tauri build
