@@ -1,0 +1,230 @@
+name: Publish to Flathub
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build-flatpak:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install flatpak and flatpak-builder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+
+      - name: Add Flathub repository
+        run: |
+          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+
+      - name: Install required runtimes
+        run: |
+          sudo flatpak install -y flathub org.freedesktop.Platform//23.08
+          sudo flatpak install -y flathub org.freedesktop.Sdk//23.08
+          sudo flatpak install -y flathub org.freedesktop.Sdk.Extension.rust-stable//23.08
+          sudo flatpak install -y flathub org.freedesktop.Sdk.Extension.node20//23.08
+
+      - name: Create Flatpak manifest
+        run: |
+          cat > com.screenkey.app.yml <<'EOF'
+          app-id: com.screenkey.app
+          runtime: org.freedesktop.Platform
+          runtime-version: '23.08'
+          sdk: org.freedesktop.Sdk
+          sdk-extensions:
+            - org.freedesktop.Sdk.Extension.rust-stable
+            - org.freedesktop.Sdk.Extension.node20
+          command: screenkey-app
+
+          finish-args:
+            - --share=ipc
+            - --socket=fallback-x11
+            - --socket=wayland
+            - --device=all  # Required for /dev/input access
+            - --filesystem=home
+            - --talk-name=org.freedesktop.Notifications
+
+          modules:
+            - name: screenkey
+              buildsystem: simple
+              build-options:
+                append-path: /usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/node20/bin
+                env:
+                  CARGO_HOME: /run/build/screenkey/cargo
+                  NPM_CONFIG_CACHE: /run/build/screenkey/npm-cache
+
+              build-commands:
+                # Build frontend
+                - cd screenkey-app && npm install
+                - cd screenkey-app && npm run build
+
+                # Build Tauri app
+                - cd screenkey-app && npm run tauri build
+
+                # Install binary
+                - install -Dm755 screenkey-app/src-tauri/target/release/screenkey-app /app/bin/screenkey-app
+
+                # Install desktop file
+                - install -Dm644 com.screenkey.app.desktop /app/share/applications/com.screenkey.app.desktop
+
+                # Install icon
+                - install -Dm644 screenkey-app/src-tauri/icons/128x128.png /app/share/icons/hicolor/128x128/apps/com.screenkey.app.png
+
+                # Install appdata
+                - install -Dm644 com.screenkey.app.appdata.xml /app/share/appdata/com.screenkey.app.appdata.xml
+
+              sources:
+                - type: dir
+                  path: .
+          EOF
+
+      - name: Create desktop file
+        run: |
+          cat > com.screenkey.app.desktop <<'EOF'
+          [Desktop Entry]
+          Type=Application
+          Name=ScreenKey
+          GenericName=Keyboard Display
+          Comment=Display keyboard inputs on screen for tutorials and screencasts
+          Exec=screenkey-app
+          Icon=com.screenkey.app
+          Terminal=false
+          Categories=Utility;System;
+          Keywords=keyboard;screencast;tutorial;recording;
+          EOF
+
+      - name: Create AppData file
+        run: |
+          cat > com.screenkey.app.appdata.xml <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <component type="desktop-application">
+            <id>com.screenkey.app</id>
+            <metadata_license>MIT</metadata_license>
+            <project_license>MIT</project_license>
+            <name>ScreenKey</name>
+            <summary>Display keyboard inputs on screen</summary>
+
+            <description>
+              <p>
+                ScreenKey is a cross-platform desktop application that displays keyboard
+                inputs on screen in real-time. Perfect for tutorials, demonstrations,
+                and vim command visualization.
+              </p>
+              <p>Features:</p>
+              <ul>
+                <li>Global keyboard capture for all applications</li>
+                <li>Three layout modes: vertical, horizontal, and wrapped</li>
+                <li>Six predefined themes plus custom theme creator</li>
+                <li>Configurable display duration, opacity, and font size</li>
+                <li>Always-on-top overlay window</li>
+                <li>Smart auto-scroll functionality</li>
+                <li>Modifier key support (Ctrl, Shift, Alt, Super)</li>
+              </ul>
+            </description>
+
+            <launchable type="desktop-id">com.screenkey.app.desktop</launchable>
+
+            <screenshots>
+              <screenshot type="default">
+                <caption>ScreenKey main window</caption>
+              </screenshot>
+            </screenshots>
+
+            <url type="homepage">https://github.com/rusmanplatd/screenkey</url>
+            <url type="bugtracker">https://github.com/rusmanplatd/screenkey/issues</url>
+
+            <provides>
+              <binary>screenkey-app</binary>
+            </provides>
+
+            <releases>
+              <release version="0.0.12" date="2025-10-04"/>
+            </releases>
+
+            <content_rating type="oars-1.1"/>
+          </component>
+          EOF
+
+      - name: Build Flatpak
+        run: |
+          flatpak-builder --force-clean --repo=repo build-dir com.screenkey.app.yml
+
+      - name: Create single-file bundle
+        run: |
+          flatpak build-bundle repo screenkey.flatpak com.screenkey.app
+
+      - name: Upload Flatpak artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: flatpak-bundle
+          path: screenkey.flatpak
+
+      - name: Create installation instructions
+        run: |
+          cat > INSTALL-FLATPAK.md <<'EOF'
+          # Install ScreenKey as Flatpak
+
+          ## Method 1: From Flathub (when published)
+
+          ```bash
+          flatpak install flathub com.screenkey.app
+          flatpak run com.screenkey.app
+          ```
+
+          ## Method 2: From bundle file
+
+          ```bash
+          # Download the .flatpak file from releases
+          flatpak install screenkey.flatpak
+          flatpak run com.screenkey.app
+          ```
+
+          ## Run with sudo for keyboard capture
+
+          ```bash
+          sudo -E flatpak run com.screenkey.app
+          ```
+
+          ## Permissions
+
+          ScreenKey requires device access (`--device=all`) to read from `/dev/input` for keyboard capture.
+
+          ## Update
+
+          ```bash
+          flatpak update com.screenkey.app
+          ```
+
+          ## Uninstall
+
+          ```bash
+          flatpak uninstall com.screenkey.app
+          ```
+
+          ## Note for Flathub Publishing
+
+          To publish to Flathub, you need to:
+          1. Fork https://github.com/flathub/flathub
+          2. Create a new repository named `com.screenkey.app`
+          3. Add the manifest file and submit a pull request
+          EOF
+
+          cat INSTALL-FLATPAK.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload installation instructions
+        uses: actions/upload-artifact@v4
+        with:
+          name: flatpak-installation-instructions
+          path: INSTALL-FLATPAK.md
+
+      - name: Upload to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload ${{ github.event.release.tag_name }} screenkey.flatpak --clobber

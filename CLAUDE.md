@@ -196,6 +196,8 @@ useEffect(() => {
 
 ## CI/CD Pipeline
 
+### Core Workflows
+
 **`.github/workflows/ci.yml`:**
 - Runs on push/PR to main/master
 - Steps: TypeScript type check → Frontend build → Rust fmt check → Clippy → Tauri build
@@ -204,6 +206,71 @@ useEffect(() => {
 - Triggered by version tags (`v*`) or manual dispatch
 - Builds for 4 targets: Linux x64, macOS Intel/ARM, Windows x64
 - Creates draft release, uploads binaries, auto-publishes
+
+### Package Distribution Workflows
+
+All publishing workflows are triggered on release publication or can be manually dispatched.
+
+**`.github/workflows/publish-apt.yml` - APT Repository (Debian/Ubuntu):**
+- Downloads `.deb` files from release
+- Generates APT repository metadata (Packages, Release files)
+- Signs repository with GPG (requires `APT_GPG_PRIVATE_KEY` and `APT_GPG_KEY_ID` secrets)
+- Deploys to GitHub Pages branch `gh-pages-apt`
+- Users can add repo: `https://rusmanplatd.github.io/screenkey`
+
+**`.github/workflows/publish-snap.yml` - Snap Store:**
+- Builds snap package with classic confinement (required for keyboard capture)
+- Uploads to Snap Store (requires `SNAPCRAFT_TOKEN` secret)
+- Publishes to stable channel
+- Users install: `sudo snap install screenkey --classic`
+
+**`.github/workflows/publish-flatpak.yml` - Flatpak/Flathub:**
+- Builds Flatpak bundle with org.freedesktop.Platform runtime
+- Creates AppData metadata and desktop integration files
+- Uploads `.flatpak` bundle to release assets
+- Note: Flathub publishing requires separate PR to flathub/flathub repository
+
+**`.github/workflows/publish-rpm.yml` - RPM Repository (Fedora/RHEL/CentOS):**
+- Builds RPM package from Tauri binary
+- Creates RPM repository with `createrepo_c`
+- Deploys to GitHub Pages branch `gh-pages-rpm`
+- Users can add repo config from: `https://rusmanplatd.github.io/screenkey-rpm/`
+
+**`.github/workflows/publish-aur.yml` - AUR (Arch Linux):**
+- Generates PKGBUILD and .SRCINFO files
+- Pushes to AUR repository `ssh://aur@aur.archlinux.org/screenkey-app.git`
+- Requires `AUR_SSH_PRIVATE_KEY` secret
+- Users install: `yay -S screenkey-app` or `paru -S screenkey-app`
+
+**`.github/workflows/publish-appimage.yml` - AppImage:**
+- Builds portable AppImage with all dependencies bundled
+- Uses Ubuntu 20.04 for maximum compatibility
+- Generates zsync file for delta updates
+- Uploads to release assets
+- Users download and run: `chmod +x ScreenKey-*.AppImage && sudo ./ScreenKey-*.AppImage`
+
+### Required GitHub Secrets for Publishing
+
+To enable all publishing workflows, configure these secrets in repository settings:
+
+- `APT_GPG_PRIVATE_KEY` - GPG private key for signing APT repository
+- `APT_GPG_KEY_ID` - GPG key ID for APT signing
+- `SNAPCRAFT_TOKEN` - Snapcraft authentication token (get via `snapcraft export-login`)
+- `AUR_SSH_PRIVATE_KEY` - SSH private key for AUR publishing
+
+### Manual Workflow Triggers
+
+All publishing workflows support manual dispatch for testing:
+
+```bash
+# Via GitHub CLI
+gh workflow run publish-apt.yml
+gh workflow run publish-snap.yml
+gh workflow run publish-flatpak.yml
+gh workflow run publish-rpm.yml
+gh workflow run publish-aur.yml
+gh workflow run publish-appimage.yml
+```
 
 ## System Dependencies (Linux)
 

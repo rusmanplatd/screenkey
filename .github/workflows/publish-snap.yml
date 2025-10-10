@@ -1,0 +1,169 @@
+name: Publish to Snap Store
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build-snap:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: 'screenkey-app/package-lock.json'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install snapcraft
+        run: |
+          sudo snap install snapcraft --classic
+
+      - name: Create snapcraft.yaml
+        run: |
+          mkdir -p screenkey-app/snap
+          cat > screenkey-app/snap/snapcraft.yaml <<'EOF'
+          name: screenkey
+          base: core22
+          version: '0.0.12'
+          summary: Display keyboard inputs on screen for tutorials and screencasts
+          description: |
+            ScreenKey is a cross-platform desktop application that displays keyboard
+            inputs on screen in real-time. Perfect for tutorials, demonstrations,
+            and vim command visualization.
+
+            Features:
+            - Global keyboard capture
+            - Three layout modes (vertical, horizontal, wrapped)
+            - Customizable themes and colors
+            - Always-on-top overlay window
+            - Smart auto-scroll
+            - Modifier key support
+
+          grade: stable
+          confinement: classic  # Required for global keyboard capture
+
+          architectures:
+            - build-on: amd64
+
+          parts:
+            screenkey:
+              plugin: nil
+              build-packages:
+                - wget
+                - curl
+              override-build: |
+                # Install Node.js
+                curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+                apt-get install -y nodejs
+
+                # Install Rust
+                curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+                . $HOME/.cargo/env
+
+                # Copy source
+                cp -r $SNAPCRAFT_PROJECT_DIR/screenkey-app $SNAPCRAFT_PART_INSTALL/
+
+                # Build frontend
+                cd $SNAPCRAFT_PART_INSTALL/screenkey-app
+                npm install
+                npm run build
+
+                # Build Tauri app
+                npm run tauri build
+
+                # Copy binary
+                mkdir -p $SNAPCRAFT_PART_INSTALL/bin
+                cp src-tauri/target/release/screenkey-app $SNAPCRAFT_PART_INSTALL/bin/
+
+              stage-packages:
+                - libwebkit2gtk-4.1-0
+                - libgtk-3-0
+                - libayatana-appindicator3-1
+
+          apps:
+            screenkey:
+              command: bin/screenkey-app
+              plugs:
+                - desktop
+                - desktop-legacy
+                - wayland
+                - x11
+                - opengl
+                - home
+                - network
+                - hardware-observe
+                - input  # For keyboard capture
+          EOF
+
+      - name: Build snap
+        run: |
+          cd screenkey-app
+          snapcraft
+
+      - name: Upload snap artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: snap-package
+          path: screenkey-app/*.snap
+
+      - name: Publish to Snap Store
+        if: github.event_name == 'release'
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
+        run: |
+          cd screenkey-app
+          echo "$SNAPCRAFT_STORE_CREDENTIALS" | snapcraft login --with -
+          snapcraft upload --release=stable *.snap
+
+      - name: Create installation instructions
+        run: |
+          cat > INSTALL-SNAP.md <<'EOF'
+          # Install ScreenKey from Snap Store
+
+          ## Install
+
+          ```bash
+          sudo snap install screenkey --classic
+          ```
+
+          Note: `--classic` confinement is required for global keyboard capture.
+
+          ## Run
+
+          ```bash
+          sudo screenkey
+          ```
+
+          ## Permissions
+
+          The snap has classic confinement to access `/dev/input` for keyboard capture.
+
+          ## Update
+
+          ```bash
+          sudo snap refresh screenkey
+          ```
+
+          ## Uninstall
+
+          ```bash
+          sudo snap remove screenkey
+          ```
+          EOF
+
+          cat INSTALL-SNAP.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload installation instructions
+        uses: actions/upload-artifact@v4
+        with:
+          name: snap-installation-instructions
+          path: INSTALL-SNAP.md

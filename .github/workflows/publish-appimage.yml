@@ -1,0 +1,305 @@
+name: Build and Publish AppImage
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build-appimage:
+    runs-on: ubuntu-20.04 # Use older Ubuntu for better compatibility
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: "screenkey-app/package-lock.json"
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.0-dev \
+            build-essential \
+            curl wget file \
+            libssl-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libx11-dev \
+            libfuse2
+
+      - name: Build application
+        working-directory: screenkey-app
+        run: |
+          npm install
+          npm run build
+          npm run tauri build
+
+      - name: Download appimagetool
+        run: |
+          wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+
+      - name: Create AppDir structure
+        run: |
+          mkdir -p ScreenKey.AppDir/usr/bin
+          mkdir -p ScreenKey.AppDir/usr/share/applications
+          mkdir -p ScreenKey.AppDir/usr/share/icons/hicolor/128x128/apps
+          mkdir -p ScreenKey.AppDir/usr/lib
+
+      - name: Copy application files
+        run: |
+          # Copy binary
+          cp screenkey-app/src-tauri/target/release/screenkey-app ScreenKey.AppDir/usr/bin/
+
+          # Copy icon
+          cp screenkey-app/src-tauri/icons/128x128.png ScreenKey.AppDir/usr/share/icons/hicolor/128x128/apps/screenkey.png
+          cp screenkey-app/src-tauri/icons/128x128.png ScreenKey.AppDir/screenkey.png
+
+          # Create desktop file
+          cat > ScreenKey.AppDir/screenkey.desktop <<'EOF'
+          [Desktop Entry]
+          Type=Application
+          Name=ScreenKey
+          GenericName=Keyboard Display
+          Comment=Display keyboard inputs on screen for tutorials and screencasts
+          Exec=screenkey-app
+          Icon=screenkey
+          Terminal=false
+          Categories=Utility;System;
+          Keywords=keyboard;screencast;tutorial;recording;
+          EOF
+
+          cp ScreenKey.AppDir/screenkey.desktop ScreenKey.AppDir/usr/share/applications/
+
+      - name: Create AppRun script
+        run: |
+          cat > ScreenKey.AppDir/AppRun <<'EOF'
+          #!/bin/bash
+          SELF=$(readlink -f "$0")
+          HERE=${SELF%/*}
+          export PATH="${HERE}/usr/bin:${PATH}"
+          export LD_LIBRARY_PATH="${HERE}/usr/lib:${LD_LIBRARY_PATH}"
+          export XDG_DATA_DIRS="${HERE}/usr/share:${XDG_DATA_DIRS}"
+
+          # Check if running with sudo
+          if [ "$EUID" -ne 0 ]; then
+              echo "ScreenKey requires sudo for keyboard capture."
+              echo "Please run: sudo $0"
+
+              # Try to show a graphical notification if available
+              if command -v notify-send &> /dev/null; then
+                  notify-send "ScreenKey" "Requires sudo for keyboard capture. Run: sudo $0"
+              fi
+
+              # Try to re-launch with pkexec if available
+              if command -v pkexec &> /dev/null; then
+                  pkexec "$SELF" "$@"
+                  exit $?
+              fi
+
+              exit 1
+          fi
+
+          exec "${HERE}/usr/bin/screenkey-app" "$@"
+          EOF
+
+          chmod +x ScreenKey.AppDir/AppRun
+
+      - name: Copy required libraries
+        run: |
+          # Copy webkit2gtk and dependencies
+          for lib in $(ldd screenkey-app/src-tauri/target/release/screenkey-app | grep "=> /" | awk '{print $3}'); do
+              if [[ $lib == /usr/lib/* ]] || [[ $lib == /lib/* ]]; then
+                  cp -L "$lib" ScreenKey.AppDir/usr/lib/ 2>/dev/null || true
+              fi
+          done
+
+      - name: Build AppImage
+        run: |
+          ./appimagetool-x86_64.AppImage ScreenKey.AppDir ScreenKey-x86_64.AppImage
+
+      - name: Make AppImage executable
+        run: |
+          chmod +x ScreenKey-x86_64.AppImage
+
+      - name: Test AppImage
+        run: |
+          ./ScreenKey-x86_64.AppImage --version || echo "Version check not available"
+          file ScreenKey-x86_64.AppImage
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION=$(cat screenkey-app/package.json | grep version | head -1 | cut -d'"' -f4)
+          else
+            VERSION=${{ github.event.release.tag_name }}
+            VERSION=${VERSION#v}
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Rename with version
+          mv ScreenKey-x86_64.AppImage ScreenKey-${VERSION}-x86_64.AppImage
+
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: appimage
+          path: ScreenKey-*.AppImage
+
+      - name: Upload to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload ${{ github.event.release.tag_name }} ScreenKey-*.AppImage --clobber
+
+      - name: Generate zsync file for updates
+        if: github.event_name == 'release'
+        run: |
+          # Install zsync tools
+          sudo apt-get install -y zsyncmake
+
+          # Create zsync file
+          zsyncmake ScreenKey-${{ steps.version.outputs.version }}-x86_64.AppImage \
+            -u "https://github.com/rusmanplatd/screenkey/releases/download/${{ github.event.release.tag_name }}/ScreenKey-${{ steps.version.outputs.version }}-x86_64.AppImage"
+
+      - name: Upload zsync file
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload ${{ github.event.release.tag_name }} ScreenKey-*.AppImage.zsync --clobber
+
+      - name: Create installation instructions
+        run: |
+          cat > INSTALL-APPIMAGE.md <<'EOF'
+          # Install ScreenKey AppImage
+
+          ## Download
+
+          Download the latest AppImage from the [releases page](https://github.com/rusmanplatd/screenkey/releases):
+
+          ```bash
+          wget https://github.com/rusmanplatd/screenkey/releases/latest/download/ScreenKey-x86_64.AppImage
+          ```
+
+          ## Make it executable
+
+          ```bash
+          chmod +x ScreenKey-*.AppImage
+          ```
+
+          ## Run
+
+          ```bash
+          sudo ./ScreenKey-*.AppImage
+          ```
+
+          Note: Requires sudo for keyboard capture on Linux.
+
+          ## Optional: Integrate with system
+
+          ### Method 1: Use AppImageLauncher
+
+          Install [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher) which automatically integrates AppImages into your system.
+
+          ```bash
+          # On Ubuntu/Debian
+          sudo add-apt-repository ppa:appimagelauncher-team/stable
+          sudo apt update
+          sudo apt install appimagelauncher
+          ```
+
+          Then just double-click the AppImage file.
+
+          ### Method 2: Manual integration
+
+          ```bash
+          # Create desktop entry
+          cat > ~/.local/share/applications/screenkey.desktop <<DESKTOP
+          [Desktop Entry]
+          Type=Application
+          Name=ScreenKey
+          Comment=Display keyboard inputs on screen
+          Exec=sudo /path/to/ScreenKey-x86_64.AppImage
+          Icon=screenkey
+          Terminal=false
+          Categories=Utility;System;
+          DESKTOP
+
+          # Make it executable
+          chmod +x ~/.local/share/applications/screenkey.desktop
+          ```
+
+          ### Method 3: Move to standard location
+
+          ```bash
+          # Move to /opt
+          sudo mv ScreenKey-*.AppImage /opt/ScreenKey.AppImage
+
+          # Create symlink
+          sudo ln -s /opt/ScreenKey.AppImage /usr/local/bin/screenkey
+
+          # Now you can run it as:
+          sudo screenkey
+          ```
+
+          ## Update
+
+          AppImages support delta updates via zsync:
+
+          ```bash
+          # Download zsync file
+          wget https://github.com/rusmanplatd/screenkey/releases/latest/download/ScreenKey-x86_64.AppImage.zsync
+
+          # Update (only downloads changes)
+          zsync ScreenKey-x86_64.AppImage.zsync
+          ```
+
+          ## Advantages of AppImage
+
+          - **No installation required** - just download and run
+          - **Works on all Linux distributions**
+          - **Portable** - carry it on a USB stick
+          - **Self-contained** - includes all dependencies
+          - **Delta updates** - efficient updates via zsync
+          - **No root needed** - except for running (keyboard capture requirement)
+
+          ## Troubleshooting
+
+          ### FUSE error
+
+          If you get a FUSE-related error:
+
+          ```bash
+          sudo apt install fuse libfuse2
+          ```
+
+          ### Extract and run
+
+          If FUSE is not available:
+
+          ```bash
+          ./ScreenKey-*.AppImage --appimage-extract
+          sudo ./squashfs-root/AppRun
+          ```
+          EOF
+
+          cat INSTALL-APPIMAGE.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload installation instructions
+        uses: actions/upload-artifact@v4
+        with:
+          name: appimage-installation-instructions
+          path: INSTALL-APPIMAGE.md

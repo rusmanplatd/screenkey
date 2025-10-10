@@ -1,0 +1,251 @@
+name: Publish to RPM Repository (YUM/DNF)
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build-rpm:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: 'screenkey-app/package-lock.json'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install RPM build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm rpmbuild createrepo-c
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl wget file \
+            libssl-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libx11-dev
+
+      - name: Build application
+        working-directory: screenkey-app
+        run: |
+          npm install
+          npm run build
+          npm run tauri build
+
+      - name: Create RPM spec file
+        run: |
+          mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+
+          cat > ~/rpmbuild/SPECS/screenkey.spec <<'EOF'
+          Name:           screenkey-app
+          Version:        0.0.12
+          Release:        1%{?dist}
+          Summary:        Display keyboard inputs on screen for tutorials and screencasts
+          License:        MIT
+          URL:            https://github.com/rusmanplatd/screenkey
+          Source0:        screenkey-app-%{version}.tar.gz
+
+          BuildRequires:  webkit2gtk4.1-devel
+          BuildRequires:  gtk3-devel
+          BuildRequires:  libappindicator-gtk3-devel
+          BuildRequires:  librsvg2-devel
+          BuildRequires:  openssl-devel
+          BuildRequires:  libX11-devel
+
+          Requires:       webkit2gtk4.1
+          Requires:       gtk3
+          Requires:       libappindicator-gtk3
+
+          %description
+          ScreenKey is a cross-platform desktop application that displays keyboard
+          inputs on screen in real-time. Perfect for tutorials, demonstrations,
+          and vim command visualization.
+
+          Features:
+          - Global keyboard capture
+          - Three layout modes (vertical, horizontal, wrapped)
+          - Customizable themes and colors
+          - Always-on-top overlay window
+          - Smart auto-scroll
+
+          %prep
+          %setup -q
+
+          %build
+          # Binary is pre-built by Tauri
+
+          %install
+          mkdir -p %{buildroot}%{_bindir}
+          mkdir -p %{buildroot}%{_datadir}/applications
+          mkdir -p %{buildroot}%{_datadir}/icons/hicolor/128x128/apps
+
+          install -m 755 screenkey-app %{buildroot}%{_bindir}/screenkey-app
+
+          cat > %{buildroot}%{_datadir}/applications/screenkey.desktop <<DESKTOP
+          [Desktop Entry]
+          Type=Application
+          Name=ScreenKey
+          GenericName=Keyboard Display
+          Comment=Display keyboard inputs on screen
+          Exec=screenkey-app
+          Icon=screenkey
+          Terminal=false
+          Categories=Utility;System;
+          DESKTOP
+
+          install -m 644 icon.png %{buildroot}%{_datadir}/icons/hicolor/128x128/apps/screenkey.png
+
+          %files
+          %{_bindir}/screenkey-app
+          %{_datadir}/applications/screenkey.desktop
+          %{_datadir}/icons/hicolor/128x128/apps/screenkey.png
+
+          %changelog
+          * Fri Oct 04 2025 Rusman Wahab <rusman@example.com> - 0.0.12-1
+          - Initial RPM release
+          EOF
+
+      - name: Prepare source for RPM
+        run: |
+          mkdir -p screenkey-app-0.0.12
+          cp screenkey-app/src-tauri/target/release/screenkey-app screenkey-app-0.0.12/
+          cp screenkey-app/src-tauri/icons/128x128.png screenkey-app-0.0.12/icon.png
+
+          tar czf ~/rpmbuild/SOURCES/screenkey-app-0.0.12.tar.gz screenkey-app-0.0.12
+
+      - name: Build RPM
+        run: |
+          rpmbuild -ba ~/rpmbuild/SPECS/screenkey.spec
+
+      - name: Find and copy RPM
+        run: |
+          mkdir -p rpms
+          find ~/rpmbuild/RPMS -name "*.rpm" -exec cp {} rpms/ \;
+          ls -lh rpms/
+
+      - name: Create RPM repository
+        run: |
+          mkdir -p rpm-repo
+          cp rpms/*.rpm rpm-repo/
+          createrepo_c rpm-repo/
+
+      - name: Create repository configuration
+        run: |
+          cat > screenkey.repo <<'EOF'
+          [screenkey]
+          name=ScreenKey Repository
+          baseurl=https://rusmanplatd.github.io/screenkey-rpm/
+          enabled=1
+          gpgcheck=0
+          EOF
+
+          cp screenkey.repo rpm-repo/
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.event_name == 'release'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./rpm-repo
+          publish_branch: gh-pages-rpm
+
+      - name: Upload RPM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-packages
+          path: rpms/*.rpm
+
+      - name: Upload to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload ${{ github.event.release.tag_name }} rpms/*.rpm --clobber
+
+      - name: Create installation instructions
+        run: |
+          cat > INSTALL-RPM.md <<'EOF'
+          # Install ScreenKey on Fedora/RHEL/CentOS
+
+          ## Method 1: From YUM/DNF Repository
+
+          ### Fedora/RHEL/Rocky/Alma Linux
+
+          ```bash
+          # Add repository
+          sudo curl -o /etc/yum.repos.d/screenkey.repo https://rusmanplatd.github.io/screenkey-rpm/screenkey.repo
+
+          # Install
+          sudo dnf install screenkey-app
+
+          # Or using yum
+          sudo yum install screenkey-app
+          ```
+
+          ## Method 2: Direct RPM Installation
+
+          ```bash
+          # Download RPM from releases
+          wget https://github.com/rusmanplatd/screenkey/releases/download/vX.X.X/screenkey-app-X.X.X-1.x86_64.rpm
+
+          # Install with dnf
+          sudo dnf install ./screenkey-app-X.X.X-1.x86_64.rpm
+
+          # Or with yum
+          sudo yum install ./screenkey-app-X.X.X-1.x86_64.rpm
+
+          # Or with rpm
+          sudo rpm -ivh screenkey-app-X.X.X-1.x86_64.rpm
+          ```
+
+          ## Run
+
+          ```bash
+          sudo screenkey-app
+          ```
+
+          Note: Requires sudo for keyboard capture.
+
+          ## Update
+
+          ```bash
+          sudo dnf update screenkey-app
+          # or
+          sudo yum update screenkey-app
+          ```
+
+          ## Uninstall
+
+          ```bash
+          sudo dnf remove screenkey-app
+          # or
+          sudo yum remove screenkey-app
+          ```
+          EOF
+
+          cat INSTALL-RPM.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload installation instructions
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-installation-instructions
+          path: INSTALL-RPM.md

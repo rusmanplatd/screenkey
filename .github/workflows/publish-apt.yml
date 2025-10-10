@@ -1,0 +1,119 @@
+name: Publish to APT Repository
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  publish-apt:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Get latest release if not triggered by release event
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            RELEASE_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
+          else
+            RELEASE_TAG=${{ github.event.release.tag_name }}
+          fi
+
+          echo "Release tag: $RELEASE_TAG"
+          gh release download "$RELEASE_TAG" --pattern '*.deb' --dir ./debs
+
+      - name: Setup APT repository structure
+        run: |
+          mkdir -p apt-repo/{pool/main,dists/stable/main/binary-amd64}
+          cp debs/*.deb apt-repo/pool/main/
+
+      - name: Generate APT repository metadata
+        run: |
+          cd apt-repo
+
+          # Generate Packages file
+          dpkg-scanpackages --multiversion pool/main > dists/stable/main/binary-amd64/Packages
+          gzip -k -f dists/stable/main/binary-amd64/Packages
+
+          # Generate Release file
+          cd dists/stable
+          cat > Release <<EOF
+          Origin: ScreenKey
+          Label: ScreenKey APT Repository
+          Suite: stable
+          Codename: stable
+          Version: 1.0
+          Architectures: amd64
+          Components: main
+          Description: APT repository for ScreenKey - Display keyboard inputs on screen
+          Date: $(date -Ru)
+          EOF
+
+          # Add checksums
+          apt-ftparchive release . >> Release
+
+      - name: Import GPG key
+        if: github.event_name == 'release'
+        run: |
+          echo "${{ secrets.APT_GPG_PRIVATE_KEY }}" | gpg --import
+
+      - name: Sign repository
+        if: github.event_name == 'release'
+        run: |
+          cd apt-repo/dists/stable
+          gpg --default-key "${{ secrets.APT_GPG_KEY_ID }}" -abs -o Release.gpg Release
+          gpg --default-key "${{ secrets.APT_GPG_KEY_ID }}" --clearsign -o InRelease Release
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.event_name == 'release'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./apt-repo
+          publish_branch: gh-pages-apt
+          cname: apt.screenkey.dev # Optional: your custom domain
+
+      - name: Create installation instructions
+        run: |
+          cat > INSTALL-APT.md <<'EOF'
+          # Install ScreenKey from APT Repository
+
+          ## Add the repository
+
+          ```bash
+          # Add GPG key
+          curl -fsSL https://rusmanplatd.github.io/screenkey/KEY.gpg | sudo gpg --dearmor -o /usr/share/keyrings/screenkey.gpg
+
+          # Add repository
+          echo "deb [signed-by=/usr/share/keyrings/screenkey.gpg] https://rusmanplatd.github.io/screenkey stable main" | sudo tee /etc/apt/sources.list.d/screenkey.list
+
+          # Update and install
+          sudo apt update
+          sudo apt install screenkey-app
+          ```
+
+          ## Run the application
+
+          ```bash
+          sudo screenkey-app
+          ```
+
+          Note: Requires sudo for keyboard capture on Linux.
+          EOF
+
+          cat INSTALL-APT.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload installation instructions
+        uses: actions/upload-artifact@v4
+        with:
+          name: apt-installation-instructions
+          path: INSTALL-APT.md
